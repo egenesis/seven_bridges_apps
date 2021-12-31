@@ -1,0 +1,107 @@
+#!/bin/bash
+
+set -euo pipefail
+
+############################
+## Command Line Arguments ##
+############################
+
+## // Specify arguments.
+
+while [[ $# -gt 0 ]]; do
+  key=$1
+  case $key in
+    -gg|--genome-gtf)
+      GENOME_GTF="$2"
+      shift 2
+      ;;
+    -gf|--genome-fasta)
+      GENOME_FASTA="$2"
+      shift 2
+      ;;
+    -pg|--payload-gtf)
+      PAYLOAD_GTF="$2"
+      shift 2
+      ;;
+    -pf|--payload-fasta)
+      PAYLOAD_FASTA="$2"
+      shift 2
+      ;;
+    -p|--payload-name)
+      PAYLOAD_PREFIX="$2"
+      shift 2
+      ;;
+    -r|--remove-contigs)
+      RM_CONTIGS=TRUE
+      shift
+      ;;
+    -t|--threads)
+      CORES="$2"
+      shift 2
+      ;;
+  esac
+done
+
+## // Check arguments.
+
+# Exit if any of the assembly or annotation files are not present.
+[[ -z ${GENOME_GTF+x} ]]      && echo "Missing genome GTF" && exit 1
+[[ -z ${GENOME_FASTA+x} ]]    && echo "Missing genome FASTA" && exit 1
+[[ -z ${PAYLOAD_GTF+x} ]]     && echo "Missing payload GTF" && exit 1
+[[ -z ${PAYLOAD_FASTA+x} ]]   && echo "Missing payload FASTA" && exit 1
+[[ -z ${PAYLOAD_PREFIX+x} ]]  && echo "Missing payload name" && exit 1
+
+# Set remove contigs to false if not specified.
+[[ -z ${RM_CONTIGS+x} ]] && RM_CONTIGS=FALSE
+
+# Use max number of cores if not specified.
+[[ -z ${CORES+x} ]] && CORES=$(nproc)
+
+###########
+## Unzip ##
+###########
+
+## // Unzip the files if zipped.
+
+[[ $GENOME_FASTA == *.gz ]]    && pigz -d $GENOME_FASTA   && GENOME_FASTA=${GENOME_FASTA%.*}
+[[ $GENOME_GTF == *.gz ]]      && pigz -d $GENOME_GTF     && GENOME_GTF=${GENOME_GTF%.*}
+[[ $PAYLOAD_FASTA == *.gz ]]   && pigz -d $PAYLOAD_FASTA  && PAYLOAD_FASTA=${PAYLOAD_FASTA%.*}
+[[ $PAYLOAD_GTF == *.gz ]]     && pigz -d $PAYLOAD_GTF    && PAYLOAD_GTF=${PAYLOAD_GTF%.*}
+
+####################
+## Remove Contigs ##
+####################
+
+## // Remove contigs if specified.
+
+if [[ $RM_CONTIGS == TRUE ]]; then
+  # Remove contigs from GTF.
+  awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF > tmp && mv tmp $GENOME_GTF
+  # Remove contigs from FASTA.
+  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA > $GENOME_FASTA
+fi
+
+################
+## Add Prefix ##
+################
+
+## // Add prefix to payload gene names and IDs.
+
+sed -i "s/gene_name \"/gene_name \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF
+sed -i "s/gene_id \"/gene_id \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF
+
+#########################
+## Concatenate Payload ##
+#########################
+
+## // Concatenate payload to annotation and assembly.
+
+cat $GENOME_GTF $PAYLOAD_GTF > ${PAYLOAD_PREFIX}_${GENOME_GTF}
+cat $GENOME_FASTA $PAYLOAD_FASTA > ${PAYLOAD_PREFIX}_${GENOME_FASTA}
+
+## // Compress the results.
+
+pigz -p $CORES ${PAYLOAD_PREFIX}_${GENOME_GTF}
+pigz -p $CORES ${PAYLOAD_PREFIX}_${GENOME_FASTA}
+
+exit 0
