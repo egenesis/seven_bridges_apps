@@ -45,11 +45,11 @@ done
 ## // Check arguments.
 
 # Exit if any of the assembly or annotation files are not present.
-[[ -z ${GENOME_GTF+x} ]]      && echo "Missing genome GTF" && exit 1
-[[ -z ${GENOME_FASTA+x} ]]    && echo "Missing genome FASTA" && exit 1
-[[ -z ${PAYLOAD_GTF+x} ]]     && echo "Missing payload GTF" && exit 1
+[[ -z ${GENOME_GTF+x} ]]      && echo "Missing genome GTF"    && exit 1
+[[ -z ${GENOME_FASTA+x} ]]    && echo "Missing genome FASTA"  && exit 1
+[[ -z ${PAYLOAD_GTF+x} ]]     && echo "Missing payload GTF"   && exit 1
 [[ -z ${PAYLOAD_FASTA+x} ]]   && echo "Missing payload FASTA" && exit 1
-[[ -z ${PAYLOAD_PREFIX+x} ]]  && echo "Missing payload name" && exit 1
+[[ -z ${PAYLOAD_PREFIX+x} ]]  && echo "Missing payload name"  && exit 1
 
 # Set remove contigs to false if not specified.
 [[ -z ${RM_CONTIGS+x} ]] && RM_CONTIGS=FALSE
@@ -57,16 +57,27 @@ done
 # Use max number of cores if not specified.
 [[ -z ${CORES+x} ]] && CORES=$(nproc)
 
+#####################################
+## Copy Files to Working Directory ##
+#####################################
+
+## // The files need to be modified so it's easier to copy them to the working directory.
+
+cp $GENOME_FASTA .   && GENOME_FASTA=$(basename $GENOME_FASTA)
+cp $GENOME_GTF .     && GENOME_GTF=$(basename $GENOME_GTF)
+cp $PAYLOAD_FASTA .  && PAYLOAD_FASTA=$(basename $PAYLOAD_FASTA)
+cp $PAYLOAD_GTF .    && PAYLOAD_GTF=$(basename $PAYLOAD_GTF)
+
 ###########
 ## Unzip ##
 ###########
 
 ## // Unzip the files if zipped.
 
-[[ $GENOME_FASTA == *.gz ]]    && pigz -d $GENOME_FASTA   && GENOME_FASTA=${GENOME_FASTA%.*}
-[[ $GENOME_GTF == *.gz ]]      && pigz -d $GENOME_GTF     && GENOME_GTF=${GENOME_GTF%.*}
-[[ $PAYLOAD_FASTA == *.gz ]]   && pigz -d $PAYLOAD_FASTA  && PAYLOAD_FASTA=${PAYLOAD_FASTA%.*}
-[[ $PAYLOAD_GTF == *.gz ]]     && pigz -d $PAYLOAD_GTF    && PAYLOAD_GTF=${PAYLOAD_GTF%.*}
+[[ $GENOME_FASTA == *.gz ]]    && pigz -d $GENOME_FASTA  && GENOME_FASTA=${GENOME_FASTA%.*} 
+[[ $GENOME_GTF == *.gz ]]      && pigz -d $GENOME_GTF    && GENOME_GTF=${GENOME_GTF%.*}
+[[ $PAYLOAD_FASTA == *.gz ]]   && pigz -d $PAYLOAD_FASTA && PAYLOAD_FASTA=${PAYLOAD_FASTA%.*}
+[[ $PAYLOAD_GTF == *.gz ]]     && pigz -d $PAYLOAD_GTF   && PAYLOAD_GTF=${PAYLOAD_GTF%.*}
 
 ####################
 ## Remove Contigs ##

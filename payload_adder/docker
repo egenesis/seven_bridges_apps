@@ -1,7 +1,5 @@
 FROM ubuntu:20.04
 
-ENV PATH=/STAR-2.7.9a/source/:$PATH
-
 CMD ["/bin/bash"]
 
 RUN \
@@ -13,4 +11,7 @@ RUN \
   tar -xvf seqkit_linux_amd64.tar.gz && \
   mv seqkit /usr/local/bin/
 
-
+RUN \
+  git clone https://github.com/egenesis/seven_bridges_apps.git && \
+  chmod +x seven_bridges_apps/payload_adder/add_payloads && \
+  mv seven_bridges_apps/payload_adder/add_payloads /usr/local/bin/
