@@ -78,15 +78,15 @@ fi
 
 ## // The files need to be modified so it's easier to copy them to the working directory.
 
-cp $GENOME_FASTA_1 .   && GENOME_FASTA_1=$(basename $GENOME_FASTA_1)
-cp $GENOME_GTF_1 .     && GENOME_GTF_1=$(basename $GENOME_GTF_1)
-cp $GENOME_FASTA_2 .   && GENOME_FASTA_2=$(basename $GENOME_FASTA_2)
-cp $GENOME_GTF_2 .     && GENOME_GTF_2=$(basename $GENOME_GTF_2)
+cp $GENOME_FASTA_1 .   && GENOME_FASTA_1=$(basename $GENOME_FASTA_1)  || exit 2
+cp $GENOME_GTF_1 .     && GENOME_GTF_1=$(basename $GENOME_GTF_1)      || exit 2
+cp $GENOME_FASTA_2 .   && GENOME_FASTA_2=$(basename $GENOME_FASTA_2)  || exit 2
+cp $GENOME_GTF_2 .     && GENOME_GTF_2=$(basename $GENOME_GTF_2)      || exit 2
 
 if [[ $PAYLOAD_PRESENT == TRUE ]]
 then
-  cp $PAYLOAD_FASTA .  && PAYLOAD_FASTA=$(basename $PAYLOAD_FASTA)
-  cp $PAYLOAD_GTF .    && PAYLOAD_GTF=$(basename $PAYLOAD_GTF)
+  cp $PAYLOAD_FASTA .  && PAYLOAD_FASTA=$(basename $PAYLOAD_FASTA)  || exit 2
+  cp $PAYLOAD_GTF .    && PAYLOAD_GTF=$(basename $PAYLOAD_GTF)      || exit 2
 fi
 
 ###########
@@ -114,11 +114,11 @@ fi
 
 if [[ $RM_CONTIGS == TRUE ]]; then
   # Remove contigs from GTF.
-  awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF_1 > tmp && mv tmp $GENOME_GTF_1
-  awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF_2 > tmp && mv tmp $GENOME_GTF_2
+  awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF_1 > tmp && mv tmp $GENOME_GTF_1 || exit 3
+  awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF_2 > tmp && mv tmp $GENOME_GTF_2 || exit 3
   # Remove contigs from FASTA.
-  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA_1 > tmp && mv tmp $GENOME_FASTA_1
-  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA_2 > tmp && mv tmp $GENOME_FASTA_2
+  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA_1 > tmp && mv tmp $GENOME_FASTA_1 || exit 3
+  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA_2 > tmp && mv tmp $GENOME_FASTA_2 || exit 3
 fi
 
 ################
@@ -129,8 +129,8 @@ fi
 
 if [[ $PAYLOAD_PRESENT == TRUE ]]
 then
-  sed -i "s/gene_name \"/gene_name \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF
-  sed -i "s/gene_id \"/gene_id \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF
+  sed -i "s/gene_name \"/gene_name \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF || exit 4
+  sed -i "s/gene_id \"/gene_id \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF     || exit 4
 fi
 
 #################
@@ -141,22 +141,22 @@ fi
 
 if [[ $PAYLOAD_PRESENT == TRUE ]]
 then
-  cat $GENOME_GTF_1 $GENOME_GTF_2 $PAYLOAD_GTF > ${PAYLOAD_GTF%.*}_${GENOME_GTF_1%.*}_${GENOME_GTF_2}
-  cat $GENOME_FASTA_1 $GENOME_FASTA_2 $PAYLOAD_FASTA > ${PAYLOAD_FASTA%.*}_${GENOME_FASTA_1%.*}_${GENOME_FASTA_2}
+  cat $GENOME_GTF_1 $GENOME_GTF_2 $PAYLOAD_GTF > ${PAYLOAD_GTF%.*}_${GENOME_GTF_1%.*}_${GENOME_GTF_2}             || exit 5
+  cat $GENOME_FASTA_1 $GENOME_FASTA_2 $PAYLOAD_FASTA > ${PAYLOAD_FASTA%.*}_${GENOME_FASTA_1%.*}_${GENOME_FASTA_2} || exit 5
 else
-  cat $GENOME_GTF_1 $GENOME_GTF_2 > ${GENOME_GTF_1%.*}_${GENOME_GTF_2}
-  cat $GENOME_FASTA_1 $GENOME_FASTA_2 > ${GENOME_FASTA_1%.*}_${GENOME_FASTA_2}
+  cat $GENOME_GTF_1 $GENOME_GTF_2 > ${GENOME_GTF_1%.*}_${GENOME_GTF_2}         || exit 5
+  cat $GENOME_FASTA_1 $GENOME_FASTA_2 > ${GENOME_FASTA_1%.*}_${GENOME_FASTA_2} || exit 5
 fi
 
 ## // Compress the results.
 
 if [[ $PAYLOAD_PRESENT == TRUE ]]
 then
-  pigz -p $CORES ${PAYLOAD_GTF%.*}_${GENOME_GTF_1%.*}_${GENOME_GTF_2}
-  pigz -p $CORES ${PAYLOAD_FASTA%.*}_${GENOME_FASTA_1%.*}_${GENOME_FASTA_2}
+  pigz -p $CORES ${PAYLOAD_GTF%.*}_${GENOME_GTF_1%.*}_${GENOME_GTF_2}       || exit 6
+  pigz -p $CORES ${PAYLOAD_FASTA%.*}_${GENOME_FASTA_1%.*}_${GENOME_FASTA_2} || exit 6
 else
-  pigz -p $CORES ${GENOME_GTF_1%.*}_${GENOME_GTF_2}
-  pigz -p $CORES ${GENOME_FASTA_1%.*}_${GENOME_FASTA_2}
+  pigz -p $CORES ${GENOME_GTF_1%.*}_${GENOME_GTF_2}     || exit 6
+  pigz -p $CORES ${GENOME_FASTA_1%.*}_${GENOME_FASTA_2} || exit 6
 fi
 
 exit 0
