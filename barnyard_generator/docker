@@ -1,0 +1,23 @@
+FROM ubuntu:20.04
+
+## Install wget, pigz, and git
+
+RUN \
+  apt-get -y update && \
+  apt-get -y install wget pigz git
+
+## Install seqkit.
+
+RUN \
+  wget https://github.com/shenwei356/seqkit/releases/download/v2.1.0/seqkit_linux_amd64.tar.gz && \
+  tar -xvf seqkit_linux_amd64.tar.gz && \
+  mv seqkit /usr/local/bin/
+
+## Install payload_adder app.
+
+RUN \
+  git clone https://github.com/egenesis/seven_bridges_apps.git && \
+  chmod a+x seven_bridges_apps/barnyard_generator/barnyard_generator && \
+  mv seven_bridges_apps/barnyard_generator/barnyard_generator /usr/local/bin/
+
+CMD ["/bin/bash"]

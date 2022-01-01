@@ -1,0 +1,173 @@
+#!/bin/bash
+
+set -euo pipefail
+
+############################
+## Command Line Arguments ##
+############################
+
+## // Specify arguments.
+
+while [[ $# -gt 0 ]]; do
+  key=$1
+  case $key in
+    -gg1|--genome-gtf-1)
+      GENOME_GTF_1="$2"
+      shift 2
+      ;;
+    -gf1|--genome-fasta-1)
+      GENOME_FASTA_1="$2"
+      shift 2
+      ;;
+    -gp1|--genome-prefix-1)
+      GENOME_PREFIX_1="$2"
+      shift 2
+      ;;
+    -gg2|--genome-gtf-2)
+      GENOME_GTF_2="$2"
+      shift 2
+      ;;
+    -gf2|--genome-fasta-2)
+      GENOME_FASTA_2="$2"
+      shift 2
+      ;;
+    -ga2|--genome-prefix-2)
+      GENOME_PREFIX_2="$2"
+      shift 2
+      ;;
+    -pg|--payload-gtf)
+      PAYLOAD_GTF="$2"
+      shift 2
+      ;;
+    -pf|--payload-fasta)
+      PAYLOAD_FASTA="$2"
+      shift 2
+      ;;
+    -p|--payload-name)
+      PAYLOAD_PREFIX="$2"
+      shift 2
+      ;;
+    -r|--remove-contigs)
+      RM_CONTIGS=TRUE
+      shift
+      ;;
+    -t|--threads)
+      CORES="$2"
+      shift 2
+      ;;
+  esac
+done
+
+## // Check arguments.
+
+# Exit if any of the assembly or annotation files are not present.
+[[ -z ${GENOME_GTF_1+x} ]]      && echo "Missing genome GTF 1"    && exit 1
+[[ -z ${GENOME_FASTA_1+x} ]]    && echo "Missing genome FASTA 1"  && exit 1
+[[ -z ${GENOME_PREFIX_1+x} ]]   && echo "Missing genome prefix 1"  && exit 1
+
+[[ -z ${GENOME_GTF_2+x} ]]      && echo "Missing genome GTF 2"    && exit 1
+[[ -z ${GENOME_FASTA_2+x} ]]    && echo "Missing genome FASTA 2"  && exit 1
+[[ -z ${GENOME_PREFIX_2+x} ]]   && echo "Missing genome prefix 2"  && exit 1
+
+# Check if there is a payload present.
+if [[ -z ${PAYLOAD_GTF+x} ]] || [[ -z ${PAYLOAD_FASTA+x} ]] || [[ -z ${PAYLOAD_PREFIX+x} ]]
+then
+  PAYLOAD_PRESENT=FALSE
+else
+  PAYLOAD_PRESENT=TRUE
+fi
+
+# Set remove contigs to false if not specified.
+[[ -z ${RM_CONTIGS+x} ]] && RM_CONTIGS=FALSE
+
+# Use max number of cores if not specified.
+[[ -z ${CORES+x} ]] && CORES=$(nproc)
+
+#####################################
+## Copy Files to Working Directory ##
+#####################################
+
+## // The files need to be modified so it's easier to copy them to the working directory.
+
+cp $GENOME_FASTA_1 .   && GENOME_FASTA=$(basename $GENOME_FASTA_1)
+cp $GENOME_GTF_1 .     && GENOME_GTF=$(basename $GENOME_GTF_1)
+cp $GENOME_FASTA_2 .   && GENOME_FASTA=$(basename $GENOME_FASTA_2)
+cp $GENOME_GTF_2 .     && GENOME_GTF=$(basename $GENOME_GTF_2)
+
+if [[ $PAYLOAD_PRESENT == TRUE ]]
+then
+  cp $PAYLOAD_FASTA .  && PAYLOAD_FASTA=$(basename $PAYLOAD_FASTA)
+  cp $PAYLOAD_GTF .    && PAYLOAD_GTF=$(basename $PAYLOAD_GTF)
+fi
+
+###########
+## Unzip ##
+###########
+
+## // Unzip the files if zipped.
+
+[[ $GENOME_FASTA_1 == *.gz ]]    && pigz -d $GENOME_FASTA_1  && GENOME_FASTA=${GENOME_FASTA_1%.*} 
+[[ $GENOME_GTF_1 == *.gz ]]      && pigz -d $GENOME_GTF_1    && GENOME_GTF=${GENOME_GTF_1%.*}
+[[ $GENOME_FASTA_2 == *.gz ]]    && pigz -d $GENOME_FASTA_2  && GENOME_FASTA=${GENOME_FASTA_2%.*}
+[[ $GENOME_GTF_2 == *.gz ]]      && pigz -d $GENOME_GTF_2    && GENOME_GTF=${GENOME_GTF_2%.*}
+
+if [[ $PAYLOAD_PRESENT == TRUE ]]
+then
+  [[ $PAYLOAD_FASTA == *.gz ]]   && pigz -d $PAYLOAD_FASTA && PAYLOAD_FASTA=${PAYLOAD_FASTA%.*}
+  [[ $PAYLOAD_GTF == *.gz ]]     && pigz -d $PAYLOAD_GTF   && PAYLOAD_GTF=${PAYLOAD_GTF%.*}
+fi
+
+####################
+## Remove Contigs ##
+####################
+
+## // Remove contigs if specified.
+
+if [[ $RM_CONTIGS == TRUE ]]; then
+  # Remove contigs from GTF.
+  awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF_1 > tmp && mv tmp $GENOME_GTF_1
+  awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF_2 > tmp && mv tmp $GENOME_GTF_2
+  # Remove contigs from FASTA.
+  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA_1 > tmp && mv tmp $GENOME_FASTA_1
+  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA_2 > tmp && mv tmp $GENOME_FASTA_2
+fi
+
+################
+## Add Prefix ##
+################
+
+## // Add prefix to payload gene names and IDs if payload present.
+
+if [[ $PAYLOAD_PRESENT == TRUE ]]
+then
+  sed -i "s/gene_name \"/gene_name \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF
+  sed -i "s/gene_id \"/gene_id \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF
+fi
+
+#################
+## Concatenate ##
+#################
+
+## // Concatenate genome 1 to genome 2.
+
+if [[ $PAYLOAD_PRESENT == TRUE ]]
+then
+  cat $GENOME_GTF_1 $GENOME_GTF_2 $PAYLOAD_GTF > ${PAYLOAD_GTF%.*}_${GENOME_GTF_1%.*}_${GENOME_GTF_2}
+  cat $GENOME_FASTA_1 $GENOME_FASTA_2 $PAYLOAD_FASTA > ${PAYLOAD_FASTA%.*}_${GENOME_FASTA_1%.*}_${GENOME_FASTA_2}
+else
+  cat $GENOME_GTF_1 $GENOME_GTF_2 > ${GENOME_GTF_1%.*}_${GENOME_GTF_2}
+  cat $GENOME_FASTA_1 $GENOME_FASTA_2 > ${GENOME_FASTA_1%.*}_${GENOME_FASTA_2}
+fi
+
+## // Compress the results.
+
+if [[ $PAYLOAD_PRESENT == TRUE ]]
+then
+  pigz -p $CORES ${PAYLOAD_GTF%.*}_${GENOME_GTF_1%.*}_${GENOME_GTF_2}
+  pigz -p $CORES ${PAYLOAD_FASTA%.*}_${GENOME_FASTA_1%.*}_${GENOME_FASTA_2}
+else
+  pigz -p $CORES ${GENOME_GTF_1%.*}_${GENOME_GTF_2}
+  pigz -p $CORES ${GENOME_FASTA_1%.*}_${GENOME_FASTA_2}
+fi
+
+exit 0
