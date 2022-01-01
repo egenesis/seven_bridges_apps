@@ -89,7 +89,7 @@ if [[ $RM_CONTIGS == TRUE ]]; then
   # Remove contigs from GTF.
   awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF > tmp && mv tmp $GENOME_GTF
   # Remove contigs from FASTA.
-  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA > $GENOME_FASTA
+  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA > tmp && mv tmp $GENOME_FASTA
 fi
 
 ################
