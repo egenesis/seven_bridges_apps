@@ -19,20 +19,12 @@ while [[ $# -gt 0 ]]; do
       GENOME_FASTA_1="$2"
       shift 2
       ;;
-    -gp1|--genome-prefix-1)
-      GENOME_PREFIX_1="$2"
-      shift 2
-      ;;
     -gg2|--genome-gtf-2)
       GENOME_GTF_2="$2"
       shift 2
       ;;
     -gf2|--genome-fasta-2)
       GENOME_FASTA_2="$2"
-      shift 2
-      ;;
-    -ga2|--genome-prefix-2)
-      GENOME_PREFIX_2="$2"
       shift 2
       ;;
     -pg|--payload-gtf)
@@ -63,11 +55,8 @@ done
 # Exit if any of the assembly or annotation files are not present.
 [[ -z ${GENOME_GTF_1+x} ]]      && echo "Missing genome GTF 1"    && exit 1
 [[ -z ${GENOME_FASTA_1+x} ]]    && echo "Missing genome FASTA 1"  && exit 1
-[[ -z ${GENOME_PREFIX_1+x} ]]   && echo "Missing genome prefix 1"  && exit 1
-
 [[ -z ${GENOME_GTF_2+x} ]]      && echo "Missing genome GTF 2"    && exit 1
 [[ -z ${GENOME_FASTA_2+x} ]]    && echo "Missing genome FASTA 2"  && exit 1
-[[ -z ${GENOME_PREFIX_2+x} ]]   && echo "Missing genome prefix 2"  && exit 1
 
 # Check if there is a payload present.
 if [[ -z ${PAYLOAD_GTF+x} ]] || [[ -z ${PAYLOAD_FASTA+x} ]] || [[ -z ${PAYLOAD_PREFIX+x} ]]
@@ -89,10 +78,10 @@ fi
 
 ## // The files need to be modified so it's easier to copy them to the working directory.
 
-cp $GENOME_FASTA_1 .   && GENOME_FASTA=$(basename $GENOME_FASTA_1)
-cp $GENOME_GTF_1 .     && GENOME_GTF=$(basename $GENOME_GTF_1)
-cp $GENOME_FASTA_2 .   && GENOME_FASTA=$(basename $GENOME_FASTA_2)
-cp $GENOME_GTF_2 .     && GENOME_GTF=$(basename $GENOME_GTF_2)
+cp $GENOME_FASTA_1 .   && GENOME_FASTA_1=$(basename $GENOME_FASTA_1)
+cp $GENOME_GTF_1 .     && GENOME_GTF_1=$(basename $GENOME_GTF_1)
+cp $GENOME_FASTA_2 .   && GENOME_FASTA_2=$(basename $GENOME_FASTA_2)
+cp $GENOME_GTF_2 .     && GENOME_GTF_2=$(basename $GENOME_GTF_2)
 
 if [[ $PAYLOAD_PRESENT == TRUE ]]
 then
@@ -106,10 +95,10 @@ fi
 
 ## // Unzip the files if zipped.
 
-[[ $GENOME_FASTA_1 == *.gz ]]    && pigz -d $GENOME_FASTA_1  && GENOME_FASTA=${GENOME_FASTA_1%.*} 
-[[ $GENOME_GTF_1 == *.gz ]]      && pigz -d $GENOME_GTF_1    && GENOME_GTF=${GENOME_GTF_1%.*}
-[[ $GENOME_FASTA_2 == *.gz ]]    && pigz -d $GENOME_FASTA_2  && GENOME_FASTA=${GENOME_FASTA_2%.*}
-[[ $GENOME_GTF_2 == *.gz ]]      && pigz -d $GENOME_GTF_2    && GENOME_GTF=${GENOME_GTF_2%.*}
+[[ $GENOME_FASTA_1 == *.gz ]]    && pigz -d $GENOME_FASTA_1  && GENOME_FASTA_1=${GENOME_FASTA_1%.*} 
+[[ $GENOME_GTF_1 == *.gz ]]      && pigz -d $GENOME_GTF_1    && GENOME_GTF_1=${GENOME_GTF_1%.*}
+[[ $GENOME_FASTA_2 == *.gz ]]    && pigz -d $GENOME_FASTA_2  && GENOME_FASTA_2=${GENOME_FASTA_2%.*}
+[[ $GENOME_GTF_2 == *.gz ]]      && pigz -d $GENOME_GTF_2    && GENOME_GTF_2=${GENOME_GTF_2%.*}
 
 if [[ $PAYLOAD_PRESENT == TRUE ]]
 then
