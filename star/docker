@@ -1,0 +1,27 @@
+FROM ubuntu:20.04
+
+ENV PATH=/STAR-2.7.9a/source/:$PATH
+
+CMD ["/bin/bash"]
+
+RUN \
+  apt-get -y update && \
+  apt-get -y install make wget g++ libz-dev curl pigz
+
+RUN \
+  wget https://github.com/alexdobin/STAR/archive/2.7.9a.tar.gz && \
+  tar -xzf 2.7.9a.tar.gz && \
+  cd STAR-2.7.9a/source && \
+  make STAR && \
+  cd ..
+
+RUN mkdir /files
+
+RUN \
+  curl -L https://github.com/10XGenomics/cellranger/blob/master/lib/python/cellranger/barcodes/3M-february-2018.txt.gz?raw=true | \
+    zcat > 3M-february-2018.txt && \
+  mv 3M-february-2018.txt /files
+
+RUN \
+  curl -O https://raw.githubusercontent.com/10XGenomics/cellranger/master/lib/python/cellranger/barcodes/737K-august-2016.txt && \
+  mv 737K-august-2016.txt /files
