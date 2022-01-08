@@ -1,0 +1,12 @@
+FROM ubuntu:20.04
+
+CMD ["/bin/bash"]
+
+RUN \
+  apt-get -y update \
+  && apt-get -y install curl
+
+RUN \
+  curl -LO https://github.com/shenwei356/seqkit/releases/download/v2.1.0/seqkit_linux_386.tar.gz \
+  && tar -xvzf seqkit_linux_386.tar.gz \
+  && mv seqkit /usr/local/bin
