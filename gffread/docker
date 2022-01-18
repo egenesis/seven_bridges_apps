@@ -1,0 +1,15 @@
+FROM ubuntu:20.04
+
+ENV PATH=/salmon-1.6.0_linux_x86_64/bin:$PATH
+
+CMD ["/bin/bash"]
+
+RUN \
+  apt-get -y update \
+  && apt-get -y install wget pigz make git g++
+
+RUN \
+  git clone https://github.com/gpertea/gffread \
+  && cd gffread \
+  && make release \
+  && cp gffread /usr/local/bin
