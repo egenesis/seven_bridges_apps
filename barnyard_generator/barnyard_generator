@@ -84,6 +84,8 @@ fi
 ## Copy Files to Working Directory ##
 #####################################
 
+echo "...Copying files to working directory"
+
 ## // The files need to be modified so it's easier to copy them to the working directory.
 
 cp $GENOME_FASTA_1 .   && GENOME_FASTA_1=$(basename $GENOME_FASTA_1)  || exit 2
@@ -100,6 +102,8 @@ fi
 ###########
 ## Unzip ##
 ###########
+
+echo "...Unzipping files"
 
 ## // Unzip the files if zipped.
 
@@ -121,6 +125,8 @@ fi
 ## // Remove contigs if specified.
 
 if [[ $RM_CONTIGS == TRUE ]]; then
+  echo "...Removing contigs"
+
   # Remove contigs from GTF.
   awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF_1 > tmp && mv tmp $GENOME_GTF_1 || exit 3
   awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF_2 > tmp && mv tmp $GENOME_GTF_2 || exit 3
@@ -137,26 +143,33 @@ fi
 
 if [[ $PAYLOAD_PRESENT == TRUE ]]
 then
-  sed -i "s/gene_name \"/gene_name \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF || exit 4
-  sed -i "s/gene_id \"/gene_id \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF     || exit 4
+  echo "...Adding prefixes to payload gene names and IDs"
+  sed -i "s/gene_name \"/gene_name \"\\${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF || exit 4
+  sed -i "s/gene_id \"/gene_id \"\\${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF     || exit 4
 fi
 
 ## // Add species prefix to gene names and chromosomes in the GTFs.
 
-sed -i 's/gene_name \"/gene_name \""${GENOME_PREFIX_1}"/' $GENOME_GTF_1
+echo "...Adding species prefixes to the GTFs"
+
+sed -i "s/gene_name \"/gene_name \"\\${GENOME_PREFIX_1}-/" $GENOME_GTF_1
 awk -v p=$GENOME_PREFIX_1 '/^[^#]/ {printf p"-"}1' $GENOME_GTF_1 > tmp && mv tmp $GENOME_GTF_1
 
-sed -i 's/gene_name \"/gene_name \""${GENOME_PREFIX_2}"/' $GENOME_GTF_2
+sed -i "s/gene_name \"/gene_name \"\\${GENOME_PREFIX_2}-/" $GENOME_GTF_2
 awk -v p=$GENOME_PREFIX_2 '/^[^#]/ {printf p"-"}1' $GENOME_GTF_2 > tmp && mv tmp $GENOME_GTF_2
 
 ## // Add species prefix to chromosomes in the FASTAs.
 
-sed -i 's/^>/>"${GENOME_PREFIX_1}"-' $GENOME_FASTA_1
-sed -i 's/^>/>"${GENOME_PREFIX_2}"-' $GENOME_FASTA_2
+echo "...Adding species prefixes to the FASTAs"
+
+sed -i "s/^>/>\\${GENOME_PREFIX_1}-/" $GENOME_FASTA_1
+sed -i "s/^>/>\\${GENOME_PREFIX_2}-/" $GENOME_FASTA_2
 
 #################
 ## Concatenate ##
 #################
+
+echo "...Concatenating the genomes"
 
 ## // Concatenate genome 1 to genome 2.
 
@@ -170,6 +183,8 @@ else
 fi
 
 ## // Compress the results.
+
+echo "...Compressing the results"
 
 if [[ $PAYLOAD_PRESENT == TRUE ]]
 then
