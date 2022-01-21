@@ -19,12 +19,20 @@ while [[ $# -gt 0 ]]; do
       GENOME_FASTA_1="$2"
       shift 2
       ;;
+    -gp1|--genome-prefix-1)
+      GENOME_PREFIX_1="$2"
+      shift 2
+      ;;
     -gg2|--genome-gtf-2)
       GENOME_GTF_2="$2"
       shift 2
       ;;
     -gf2|--genome-fasta-2)
       GENOME_FASTA_2="$2"
+      shift 2
+      ;;
+    -gp2|--genome-prefix-2)
+      GENOME_PREFIX_2="$2"
       shift 2
       ;;
     -pg|--payload-gtf)
@@ -121,9 +129,9 @@ if [[ $RM_CONTIGS == TRUE ]]; then
   seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA_2 > tmp && mv tmp $GENOME_FASTA_2 || exit 3
 fi
 
-################
-## Add Prefix ##
-################
+#################
+## Add Prefixs ##
+#################
 
 ## // Add prefix to payload gene names and IDs if payload present.
 
@@ -132,6 +140,19 @@ then
   sed -i "s/gene_name \"/gene_name \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF || exit 4
   sed -i "s/gene_id \"/gene_id \"${PAYLOAD_PREFIX}-/" $PAYLOAD_GTF     || exit 4
 fi
+
+## // Add species prefix to gene names and chromosomes in the GTFs.
+
+sed -i 's/gene_name \"/gene_name \""${GENOME_PREFIX_1}"/' $GENOME_GTF_1
+awk -v p=$GENOME_PREFIX_1 '/^[^#]/ {printf p"-"}1' $GENOME_GTF_1 > tmp && mv tmp $GENOME_GTF_1
+
+sed -i 's/gene_name \"/gene_name \""${GENOME_PREFIX_2}"/' $GENOME_GTF_2
+awk -v p=$GENOME_PREFIX_2 '/^[^#]/ {printf p"-"}1' $GENOME_GTF_2 > tmp && mv tmp $GENOME_GTF_2
+
+## // Add species prefix to chromosomes in the FASTAs.
+
+sed -i 's/^>/>"${GENOME_PREFIX_1}"-' $GENOME_FASTA_1
+sed -i 's/^>/>"${GENOME_PREFIX_2}"-' $GENOME_FASTA_2
 
 #################
 ## Concatenate ##
