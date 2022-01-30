@@ -1,0 +1,81 @@
+#!/bin/bash
+
+set -euo pipefail
+
+############################
+## Command Line Arguments ##
+############################
+
+## // Specify arguments.
+
+while [[ $# -gt 0 ]]; do
+  key=$1
+  case $key in
+    -gg|--genome-gtf)
+      GENOME_GTF="$2"
+      shift 2
+      ;;
+    -gf|--genome-fasta)
+      GENOME_FASTA="$2"
+      shift 2
+      ;;
+    -r|--remove-contigs)
+      RM_CONTIGS=TRUE
+      shift
+      ;;
+    -t|--threads)
+      CORES="$2"
+      shift 2
+      ;;
+  esac
+done
+
+## // Check arguments.
+
+# Exit if any of the assembly or annotation files are not present.
+[[ -z ${GENOME_GTF+x} ]]      && echo "Missing genome GTF"    && exit 1
+[[ -z ${GENOME_FASTA+x} ]]    && echo "Missing genome FASTA"  && exit 1
+
+# Set remove contigs to false if not specified.
+[[ -z ${RM_CONTIGS+x} ]] && RM_CONTIGS=FALSE
+
+# Use max number of cores if not specified.
+[[ -z ${CORES+x} ]] && CORES=$(nproc)
+
+#####################################
+## Copy Files to Working Directory ##
+#####################################
+
+## // The files need to be modified so it's easier to copy them to the working directory.
+
+cp $GENOME_FASTA .   && GENOME_FASTA=$(basename $GENOME_FASTA)
+cp $GENOME_GTF .     && GENOME_GTF=$(basename $GENOME_GTF)
+
+###########
+## Unzip ##
+###########
+
+## // Unzip the files if zipped.
+
+[[ $GENOME_FASTA == *.gz ]]    && pigz -d $GENOME_FASTA  && GENOME_FASTA=${GENOME_FASTA%.*} 
+[[ $GENOME_GTF == *.gz ]]      && pigz -d $GENOME_GTF    && GENOME_GTF=${GENOME_GTF%.*}
+
+####################
+## Remove Contigs ##
+####################
+
+## // Remove contigs if specified.
+
+if [[ $RM_CONTIGS == TRUE ]]; then
+  # Remove contigs from GTF.
+  awk '$1 ~ /^#/ || $1 !~ /\.1$/' $GENOME_GTF > tmp && mv tmp $GENOME_GTF
+  # Remove contigs from FASTA.
+  seqkit grep -j $CORES -vrp "\.1$" $GENOME_FASTA > tmp && mv tmp $GENOME_FASTA
+fi
+
+## // Compress the results.
+
+pigz -p $CORES ${GENOME_GTF}
+pigz -p $CORES ${GENOME_FASTA}
+
+exit 0
