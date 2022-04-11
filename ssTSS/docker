@@ -1,0 +1,16 @@
+FROM ubuntu:20.04
+
+## Install required software.
+
+RUN \
+  apt-get -y update && \
+  apt-get -y install git wget build-essential python3-htseq python3-pandas python3-pysam
+
+## Install ssTSS app.
+
+RUN \
+  git clone https://github.com/egenesis/seven_bridges_apps.git && \
+  chmod a+x seven_bridges_apps/ssTSS/ssTSS.py && \
+  mv seven_bridges_apps/ssTSS/ssTSS.py /usr/local/bin/
+
+CMD ["/bin/bash"]
