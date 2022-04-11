@@ -1,4 +1,4 @@
-FROM ubuntu:20.03
+FROM ubuntu:20.04
 
 ENV PATH=/cellranger-6.1.2:$PATH
 
@@ -9,6 +9,6 @@ RUN \
   && apt-get -y install curl
 
 RUN \
-  curl -o cellranger-6.1.2.tar.gz "https://cf.10xgenomics.com/releases/cell-exp/cellranger-6.1.2.tar.gz?Expires=1649379034&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9jZi4xMHhnZW5vbWljcy5jb20vcmVsZWFzZXMvY2VsbC1leHAvY2VsbHJhbmdlci02LjEuMi50YXIuZ3oiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE2NDkzNzkwMzR9fX1dfQ__&Signature=jdxB2NaxTlVpdUMLxzEFubyxHnb8RPJLjp3Vels4B9enL2k548tcr1RACPYSUZQwfn0SskP3G-LkR9w7xX2ePQ6sEGAq4s6ZNHd5roAjS-M43pAGs3qg0ELhqbCX2qkmo3Y67WKCg2wpqDCgrHLLZ77ro03crCOsTS~Y~toh-0W3YmMjk0xAo8fwqHS3NJnChnayvWAuPHgJKgXjDGCL40Ru7zETU9-LZuOgFhaDqLc8tSOiY6BQQG87w3qKMs4sa9~CVWRoMBATSbRvcVfPrl2bpFEBFihFZUvSWYZ6-my9gJb5ywi7GP6HT9UFsaFfSymscDDEHOsYIOAuQNn8Gw__&Key-Pair-Id=APKAI7S6A5RYOXBWRPDA" \
+  curl -o cellranger-6.1.2.tar.gz "https://cf.10xgenomics.com/releases/cell-exp/cellranger-6.1.2.tar.gz?Expires=1649727760&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9jZi4xMHhnZW5vbWljcy5jb20vcmVsZWFzZXMvY2VsbC1leHAvY2VsbHJhbmdlci02LjEuMi50YXIuZ3oiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE2NDk3Mjc3NjB9fX1dfQ__&Signature=KHjFiKr9AC8rve0Ba5qY~ASF1pE46SUnA9t9I-UBoDkdmLtKf5Fdd3DhiFttk7PcAVtGS~7EW6hcfXYMxXR-7tqlBoiS6uw1JSqGXHTHuz-GMD7D8F--~FbVNcsPdSjdK5xIX3GANSLnVz-pA1tQ79hq7QJGuM66bz9HWr85fIEXxfAMmSdxjyXEVk92fh3IBhqxtKFSZjewBv0Tsa60oP6JvNgCxFJIBvwWkJB-Yn225-gHnAmeI-XmeAg41CH48QOFoM9sxQ1Et5MWRat9CWnU3PQ44z5NvIKak63dDWaktpeJ313ndTb~ehtHIzw4MfGFmx5cFJmvf1PLTAlagg__&Key-Pair-Id=APKAI7S6A5RYOXBWRPDA" \
   && tar -xzvf cellranger-6.1.2.tar.gz
   
