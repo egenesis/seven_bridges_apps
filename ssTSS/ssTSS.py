@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import HTSeq
 import itertools
 import pandas as pd
