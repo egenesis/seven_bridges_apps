@@ -59,4 +59,5 @@ TSSs = list(x for x, _ in itertools.groupby(TSSs))
 
 # Turn into Pandas DataFrame and save as csv.
 df = pd.DataFrame(TSSs, columns=['chrm', 'strand', 'tss', 'cell_barcode', 'umi'])
+df = df.groupby(['chrm', 'strand', 'tss', 'cell_barcode']).size().reset_index(name='counts')
 df.to_csv(os.path.splitext(args.bam)[0] + '.csv.gz', index=False, compression='gzip')
