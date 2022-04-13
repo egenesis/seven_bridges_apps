@@ -6,6 +6,8 @@ import pandas as pd
 import argparse
 import os
 import numpy as np
+import scipy.sparse as sparse
+import scipy.io as sio
 
 ## Parse Arguments
 
@@ -49,6 +51,8 @@ with HTSeq.BAM_Reader(args.bam) as f:
         TSS = (chrm, strand, tss, cell_barcode, umi)
         TSSs.append(TSS)
 
+## Process TSSs
+
 # Remove duplicates within cells.
 TSSs.sort()
 TSSs = list(x for x, _ in itertools.groupby(TSSs))
@@ -60,6 +64,9 @@ TSSs = pd.DataFrame(TSSs, columns=['range', 'cell_barcode'])
 # Aggregate overlapping TSSs.
 TSSs = TSSs.groupby(['range', 'cell_barcode']).size().reset_index(name="score")
 
+# Convert the score column to integers.
+TSSs['score'] = TSSs['score'].astype(int)
+
 # Find number of cells that a TSS is present in.
 TSSs['n_cells'] = TSSs.groupby('range')['range'].transform('size')
 
@@ -69,5 +76,20 @@ TSSs = TSSs[TSSs['n_cells'] >= args.ncells]
 # Convert to wide format.
 TSSs = TSSs.groupby(['range', 'cell_barcode'])['score'].max().unstack().replace(np.nan, 0)
 
-# Save as csv.
-TSSs.to_csv(os.path.splitext(args.bam)[0] + '.csv.gz', index=True, compression='gzip')
+## Export the TSSs
+
+# Create output directory.
+output_dir = os.path.splitext(args.bam)[0]
+os.mkdir(output_dir)
+
+# Save the barcodes.
+barcodes = pd.DataFrame(TSSs.columns)
+barcodes.to_csv(f"{output_dir}/barcodes.tsv", index=False, header=False, sep="\t")
+
+# Save the features.
+features = pd.DataFrame(TSSs.index)
+features.to_csv(f"{output_dir}/features.tsv", index=False, header=False, sep="\t")
+
+# Save the matrix.
+counts = sparse.csr_matrix(TSSs.to_numpy())
+sio.mmwrite(f"{output_dir}/counts.mtx", counts)
