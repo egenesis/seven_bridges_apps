@@ -79,7 +79,7 @@ TSSs = TSSs.groupby(['range', 'cell_barcode'])['score'].max().unstack().replace(
 ## Export the TSSs
 
 # Create output directory.
-output_dir = os.path.splitext(args.bam)[0]
+output_dir = os.path.splitext(os.path.basename(args.bam))[0]
 os.mkdir(output_dir)
 
 # Save the barcodes.
