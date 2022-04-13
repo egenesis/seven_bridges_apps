@@ -1,0 +1,15 @@
+FROM ubuntu:20.04
+
+CMD ["/bin/bash"]
+
+RUN \
+    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+    RUN DEBIAN_FRONTEND=noninteractive apt-get -y update \
+    && apt-get -y install wget perl unzip default-jre
+
+RUN \
+    wget -O fastqc.zip https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.9.zip \
+    && unzip fastqc.zip \
+    && cd FastQC \
+    && chmod 755 fastqc \
+    && cp fastqc /usr/local/bin/
