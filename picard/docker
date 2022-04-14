@@ -1,22 +1,25 @@
 FROM ubuntu:20.04
 
-## Install required software to build picard tools 
+# Set paths.
+
+ARG PATH=/root/miniconda3/bin:$PATH
+ENV PATH=/root/miniconda3/bin:$PATH
+ENV PATH=/root/miniconda3/envs/picard/bin:$PATH
+
+# Install required software to build picard tools 
 RUN \
     apt-get -y update \
     && apt-get -y install git wget
 
 RUN \
-    wget https://download.oracle.com/java/18/latest/jdk-18_linux-x64_bin.tar.gz \
-    && tar -xzf jdk-18_linux-x64_bin.tar.gz 
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    && bash Miniconda3-latest-Linux-x86_64.sh -b \
+    && conda update -y -n base -c defaults conda \
+    && conda install -y -n base -c conda-forge mamba \
+    && mamba update -y -n base -c conda-forge mamba
 
-ENV JAVA_HOME=jdk-18/bin/java
-
-# Grab picard executable and add to path
-#RUN \
-#    git clone https://github.com/broadinstitute/picard.git --branch 2.27.1 \
-#    && cd picard/ \
-#    && ./gradlew shadowJar \
-#    && ./gradlew clean \
-#    && cp build/libs/picard.jar ..
+RUN \
+    mamba create -y -n picard -c conda-forge -c bioconda \
+    picard=2.27.1
 
 CMD ["/bin/bash"]
