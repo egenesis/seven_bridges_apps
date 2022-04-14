@@ -1,0 +1,22 @@
+FROM ubuntu:20.04
+
+## Install required software to build picard tools 
+RUN \
+    apt-get -y update \
+    && apt-get -y install git wget
+
+RUN \
+    wget https://download.oracle.com/java/18/latest/jdk-18_linux-x64_bin.tar.gz \
+    && tar -xzf jdk-18_linux-x64_bin.tar.gz 
+
+ENV JAVA_HOME=jdk-18/bin/java
+
+# Grab picard executable and add to path
+#RUN \
+#    git clone https://github.com/broadinstitute/picard.git --branch 2.27.1 \
+#    && cd picard/ \
+#    && ./gradlew shadowJar \
+#    && ./gradlew clean \
+#    && cp build/libs/picard.jar ..
+
+CMD ["/bin/bash"]
