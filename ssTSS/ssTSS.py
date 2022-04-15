@@ -8,34 +8,43 @@ import os
 import numpy as np
 import scipy.sparse as sparse
 import scipy.io as sio
+from datetime import datetime
+import gc
 
-## Parse Arguments
+#####################
+## Parse Arguments ##
+#####################
 
 parser = argparse.ArgumentParser(description='Extract TSSs')
 parser.add_argument('-b', '--bam', type=str, required=True, help='Input BAM')
 parser.add_argument('-n', '--ncells', type=int, required=True, help='Number of cells required to keep a TSS')
 args = parser.parse_args()
 
-## Retrieve TSSs
+
+## Test values.
+
+#class MakeArgs(object):
+#    def __init__(self, bam, ncells):
+#        self.bam = bam
+#        self.ncells = ncells
+
+#args = MakeArgs('', 10)
+
+###################
+## Retrieve TSSs ##
+###################
 
 TSSs = []
 
+print(f"{datetime.now()} - Reading {args.bam}")
 with HTSeq.BAM_Reader(args.bam) as f:
-    for (read1, read2) in HTSeq.pair_SAM_alignments_with_buffer(f):
-        # Check for some read pair issues.
-        if not read1.aligned or not read2.aligned:
-            continue
-        if read1.not_primary_alignment or read2.not_primary_alignment:
-            continue
-        if read1.pcr_or_optical_duplicate or read2.pcr_or_optical_duplicate:
-            continue
-        if read1.supplementary or read2.supplementary:
-            continue
-        if not read1.proper_pair:
-            continue
+    for (read1, read2) in HTSeq.pair_SAM_alignments(f):
         # Store some read and alignment information.
-        cell_barcode = read1.optional_field('CB')
-        umi = read1.optional_field('UB')
+        try:
+            cell_barcode = read1.optional_field('CB')
+            umi = read1.optional_field('UB')
+        except AttributeError:
+            continue
         # Skip if no cell barcode or UMI present.
         if cell_barcode == "-" or umi == "-":
             continue
@@ -47,49 +56,79 @@ with HTSeq.BAM_Reader(args.bam) as f:
             tss = read1.iv.start_d
         else:
             tss = read2.iv.start_d
-        # Add TSS to list if not already present.
-        TSS = (chrm, strand, tss, cell_barcode, umi)
+        # Add TSS to list.
+        TSS = (f"{chrm}:{tss}:{strand}", cell_barcode, umi)
         TSSs.append(TSS)
 
-## Process TSSs
+gc.collect()
+
+##################
+## Process TSSs ##
+##################
 
 # Remove duplicates within cells.
-TSSs.sort()
-TSSs = list(x for x, _ in itertools.groupby(TSSs))
+print(f"{datetime.now()} - Removing duplicates")
+TSSs = list(x[0:2] for x, _ in itertools.groupby(TSSs.sort()))
+
+# Aggregate overlapping counts.
+print(f"{datetime.now()} - Aggregating overlapping counts")
+TSSs = [(x[0], x[1], y) for x, y in Counter(TSSs).items()]
 
 # Convert to DataFrame.
-TSSs = [(f"{str(x[0])}:{str(x[2])}:{str(x[1])}", x[3]) for x in TSSs]
-TSSs = pd.DataFrame(TSSs, columns=['range', 'cell_barcode'])
-
-# Aggregate overlapping TSSs.
-TSSs = TSSs.groupby(['range', 'cell_barcode']).size().reset_index(name="score")
+print(f"{datetime.now()} - Converting to a pandas DataFrame")
+TSSs = pd.DataFrame(TSSs, columns=['range', 'cell_barcode', 'score'])
 
 # Convert the score column to integers.
+print(f"{datetime.now()} - Converting score to integers")
 TSSs['score'] = TSSs['score'].astype(int)
 
 # Find number of cells that a TSS is present in.
+print(f"{datetime.now()} - Finding number of cells that a TSS is present in")
 TSSs['n_cells'] = TSSs.groupby('range')['range'].transform('size')
 
 # Filter out TSSs that are not present in enough cells.
+print(f"{datetime.now()} - Filtering out TSSs that are not present in at least {args.ncells} cells")
 TSSs = TSSs[TSSs['n_cells'] >= args.ncells]
 
-# Convert to wide format.
-TSSs = TSSs.groupby(['range', 'cell_barcode'])['score'].max().unstack().replace(np.nan, 0)
+############################
+## Convert to Wide Format ##
+############################
 
-## Export the TSSs
+# Get unique barcodes and ranges.
+barcodes = list(set(TSSs['cell_barcode'])).sort()
+ranges = list(set(TSSs['range']))
+
+# Create the counts matrix.
+print(f"{datetime.now()} - Creating the counts matrix")
+def fill_mat(row):
+    tss_mat[ranges.index(row['range']), barcodes.index(row['cell_barcode'])] = row['score']
+
+tss_mat = np.zeros((len(ranges), len(barcodes)))
+
+print(f"{datetime.now()} - Filling the counts matrix")
+TSSs.apply(lambda row: fill_mat(row), axis=1)
+
+# Convert the matrix to a sparse matrix.
+tss_mat = sparse.csr_matrix(tss_mat)
+
+#####################
+## Export the TSSs ##
+#####################
 
 # Create output directory.
 output_dir = os.path.splitext(os.path.basename(args.bam))[0]
 os.mkdir(output_dir)
 
 # Save the barcodes.
+print(f"{datetime.now()} - Saving the barcodes")
 barcodes = pd.DataFrame(TSSs.columns)
 barcodes.to_csv(f"{output_dir}/barcodes.tsv", index=False, header=False, sep="\t")
 
 # Save the features.
+print(f"{datetime.now()} - Saving the features")
 features = pd.DataFrame(TSSs.index)
 features.to_csv(f"{output_dir}/features.tsv", index=False, header=False, sep="\t")
 
 # Save the matrix.
-counts = sparse.csr_matrix(TSSs.to_numpy())
-sio.mmwrite(f"{output_dir}/counts.mtx", counts)
+print(f"{datetime.now()} - Saving the matrix")
+sio.mmwrite(f"{output_dir}/counts.mtx", tss_mat)
