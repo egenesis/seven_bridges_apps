@@ -128,10 +128,10 @@ df = df[df['nfeatures'] >= args.nfeatures].drop('nfeatures', axis=1)
 print(f"{datetime.now()} - Adding the row and column indices")
 
 rowids = df['range'].drop_duplicates().to_frame()
-rowids['rowid'] = range(1, len(rowids) + 1)
+rowids['rowid'] = list(range(1, len(rowids) + 1))
 
 colids = df['barcode'].drop_duplicates().to_frame()
-colids['colid'] = range(1, len(colids) + 1)
+colids['colid'] = list(range(1, len(colids) + 1))
 
 df = df.merge(rowids, 'left', 'range')
 df = df.merge(colids, 'left', 'barcode')
