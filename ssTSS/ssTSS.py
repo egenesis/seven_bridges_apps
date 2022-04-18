@@ -1,11 +1,12 @@
 #!/usr/bin/env spark-submit
 
 import HTSeq
-import itertools
+import collections
 import argparse
 import os
 from datetime import datetime
 import gc
+import pyspark
 from pyspark.sql import SparkSession
 from pyspark.sql import Window
 import pyspark.sql.functions as funcs
@@ -33,56 +34,83 @@ args = parser.parse_args()
 #        self.tcount = tcount
 #        self.tcells = tcells
 
-#args = MakeArgs('hPBMC-E014_S1_L001_R1_001.fastq_Aligned.sortedByCoord.out.subsample.cleaned.bam', 20, 5, 3, 5)
+#args = MakeArgs('hPBMC-E014_S1_L001_R1_001.fastq_Aligned.sortedByCoord.out.sorted.filtered.bam', 20, 50, 3, 5)
 
 ###################
 ## Retrieve TSSs ##
 ###################
 
-TSSs = []
-
 print(f"{datetime.now()} - Reading {args.bam}")
-with HTSeq.BAM_Reader(args.bam) as f:
-    for (read1, read2) in HTSeq.pair_SAM_alignments(f):
-        # Store some read and alignment information.
-        try:
-            cell_barcode = read1.optional_field('CB')
-            umi = read1.optional_field('UB')
-        except AttributeError:
-            continue
-        # Skip if no cell barcode or UMI present.
-        if cell_barcode == "-" or umi == "-":
-            continue
-        # Get some genomic interval locations.
-        chrm = read1.iv.chrom
-        strand = read1.iv.strand
-        # Get the TSS.
-        if read1.pe_which == 'first':
-            tss = read1.iv.start_d
-        else:
-            tss = read2.iv.start_d
-        # Add TSS to list.
-        TSS = (f"{chrm}:{tss}:{strand}", cell_barcode, umi)
-        TSSs.append(TSS)
 
+TSSs = collections.deque()
+i = 0
+with open("tempTSSs.csv", "w") as ftss:
+    ftss.write("range,barcode,umi\n")
+    with HTSeq.BAM_Reader(args.bam) as fbam:
+        for (read1, read2) in HTSeq.pair_SAM_alignments(fbam):
+            # Store some read and alignment information.
+            try:
+                cell_barcode = read1.optional_field('CB')
+                umi = read1.optional_field('UB')
+            except AttributeError:
+                continue
+            # Skip if no cell barcode or UMI present.
+            if cell_barcode == "-" or umi == "-":
+                continue
+            # Get some genomic interval locations.
+            chrm = read1.iv.chrom
+            strand = read1.iv.strand
+            # Get the TSS.
+            if read1.pe_which == 'first':
+                tss = read1.iv.start_d
+            else:
+                tss = read2.iv.start_d
+            # Add TSS to list.
+            TSSs.append((f"{chrm}:{tss}:{strand},{cell_barcode},{umi}\n"))
+            # Print number of reads processed for every 1E6 reads.
+            i += 1
+            if i % 1E6 == 0:
+                print(f"{datetime.now()} - processed {i} valid read pairs")
+            # For every 1E7 reads, save to file to keep memory usage low.
+            if i % 1E7 == 0:
+                print(f"{datetime.now()} - writing {len(TSSs)} TSSs to tempTSSs.csv")
+                ftss.write("".join(TSSs))
+                print(f"{datetime.now()} - finished writing {len(TSSs)} TSSs to tempTSSs.csv")
+                TSSs = collections.deque()
+    # Write any last TSSs to file.
+    if i % 1E7 != 0:
+        print(f"{datetime.now()} - writing {len(TSSs)} TSSs to tempTSSs.csv")
+        ftss.write("".join(TSSs))
+        print(f"{datetime.now()} - finished writing {len(TSSs)} TSSs to tempTSSs.csv")
+    print(f"{datetime.now()} - wrote {i} total TSSs to tempTSSs.csv")
+
+del TSSs
 gc.collect()
 
 ##################
 ## Process TSSs ##
 ##################
 
-# Remove duplicates within cells.
-print(f"{datetime.now()} - Removing duplicates")
-TSSs.sort()
-TSSs = list(x[0:2] for x, _ in itertools.groupby(TSSs))
+# Set pyspark settings.
+
+conf = pyspark.SparkConf().setAll([('spark.sql.shuffle.partitions', '100000'), ('spark.driver.memory','12g'), ('spark.executor.cores', '2')])
+sc.stop()
+sc = pyspark.SparkContext(conf=conf)
 
 # Create pyspark DataFrame.
+print(f"{datetime.now()} - Creating the pyspark DataFrame")
+
 spark = SparkSession.builder.appName('ssTSSs').getOrCreate()
-df = spark.sparkContext.parallelize(TSSs)
-df = df.toDF(['range', 'barcode'])
+df = spark.read.option('header', 'true').csv('tempTSSs.csv')
+
+# Remove duplicates.
+print(f"{datetime.now()} - Removing duplicates")
+
+df = df.distinct().drop('umi')
 
 # Aggregate overlapping counts.
 print(f"{datetime.now()} - Aggregating overlapping counts")
+
 df = df.groupBy(['range', 'barcode']).count()
 
 # Remove ranges that are not present in at least ncells.
