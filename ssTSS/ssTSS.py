@@ -124,14 +124,19 @@ print(f"{datetime.now()} - Finding number of features per cell")
 df['nfeatures'] = df.groupby('barcode')['range'].transform('nunique', meta=('range', 'int'))
 df = df[df['nfeatures'] >= args.nfeatures].drop('nfeatures', axis=1)
 
+# Compute the results of the above filtering.
+print(f"{datetime.now()} - Computing the filtering results")
+
+df = df.compute()
+
 # Add the row and column indices.
 print(f"{datetime.now()} - Adding the row and column indices")
 
 rowids = df['range'].drop_duplicates().to_frame()
-rowids = rowids.assign(rowid = list(range(1, len(rowids) + 1)))
+rowids['rowid'] = list(range(1, len(rowids) + 1))
 
 colids = df['barcode'].drop_duplicates().to_frame()
-colids = colids.assign(colid = list(range(1, len(colids) + 1)))
+colids['colid'] = list(range(1, len(colids) + 1))
 
 df = df.merge(rowids, 'left', 'range')
 df = df.merge(colids, 'left', 'barcode')
