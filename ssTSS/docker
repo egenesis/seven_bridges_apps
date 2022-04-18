@@ -22,7 +22,7 @@ RUN \
 RUN \
   mamba create -y -n sstss -c conda-forge -c bioconda \
     htseq==2.0.1 numpy==1.22.3 pysam==0.19.0 pandas==1.4.2 python==3.9.12 \
-    matplotlib==3.5.1 scipy==1.8.0 openjdk==11.0.9.1 pyspark==3.2.1 && \
+    matplotlib==3.5.1 scipy==1.8.0 dask==2022.4.1 && \
   mamba update -y -n sstss -c conda-forge -c bioconda --all && \
   mamba clean -y --all
 

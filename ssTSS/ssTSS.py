@@ -91,7 +91,7 @@ gc.collect()
 # Create dask DataFrame.
 print(f"{datetime.now()} - Creating the dask DataFrame")
 
-df = dd.read_csv("archive/tempTSSs.csv")
+df = dd.read_csv("tempTSSs.csv")
 
 # Remove duplicates.
 print(f"{datetime.now()} - Removing duplicates")
