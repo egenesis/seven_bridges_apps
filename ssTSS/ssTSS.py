@@ -1,4 +1,4 @@
-#!/usr/bin/env spark-submit
+#!/usr/bin/env python
 
 import HTSeq
 import collections
@@ -6,10 +6,7 @@ import argparse
 import os
 from datetime import datetime
 import gc
-import pyspark
-from pyspark.sql import SparkSession
-from pyspark.sql import Window
-import pyspark.sql.functions as funcs
+import dask.dataframe as dd
 
 #####################
 ## Parse Arguments ##
@@ -34,7 +31,7 @@ args = parser.parse_args()
 #        self.tcount = tcount
 #        self.tcells = tcells
 
-#args = MakeArgs('hPBMC-E014_S1_L001_R1_001.fastq_Aligned.sortedByCoord.out.sorted.filtered.bam', 20, 50, 3, 5)
+#args = MakeArgs('', 10, 100, 3, 3)
 
 ###################
 ## Retrieve TSSs ##
@@ -91,88 +88,82 @@ gc.collect()
 ## Process TSSs ##
 ##################
 
-# Set pyspark settings.
+# Create dask DataFrame.
+print(f"{datetime.now()} - Creating the dask DataFrame")
 
-conf = pyspark.SparkConf().setAll([('spark.sql.shuffle.partitions', '100000'), ('spark.driver.memory','12g'), ('spark.executor.cores', '2')])
-sc.stop()
-sc = pyspark.SparkContext(conf=conf)
-
-# Create pyspark DataFrame.
-print(f"{datetime.now()} - Creating the pyspark DataFrame")
-
-spark = SparkSession.builder.appName('ssTSSs').getOrCreate()
-df = spark.read.option('header', 'true').csv('tempTSSs.csv')
+df = dd.read_csv("archive/tempTSSs.csv")
 
 # Remove duplicates.
 print(f"{datetime.now()} - Removing duplicates")
 
-df = df.distinct().drop('umi')
+df = df.drop_duplicates().drop('umi', axis=1)
 
 # Aggregate overlapping counts.
 print(f"{datetime.now()} - Aggregating overlapping counts")
 
-df = df.groupBy(['range', 'barcode']).count()
+df = df.groupby(['range', 'barcode']).size().reset_index().rename(columns={0: 'score'})
 
 # Remove ranges that are not present in at least ncells.
 print(f"{datetime.now()} - Finding number of cells that a TSS is present in")
-w = Window.partitionBy('range')
-df = df.select('range', 'barcode', 'count', funcs.count('range').over(w).alias('ncells'))
-df = df[df.ncells >= args.ncells]
-df = df.drop('ncells')
+
+df['ncells'] = df.groupby(['range'])['barcode'].transform('nunique', meta=('barcode', 'int'))
+df = df[df['ncells'] >= args.ncells].drop('ncells', axis=1)
 
 # Remove remaining ranges that don't have at least tcells cells with a count of tcount.
 print(f"{datetime.now()} - Finding number of cells that a TSS has a count of {args.tcount}")
-range_counts = df[df['count'] >= args.tcount].groupBy('range').count()
-range_counts = range_counts[range_counts['count'] >= args.tcells].drop('count')
-df = df.join(range_counts, 'range', how='inner')
+
+filtered = df[df['score'] >= args.tcount].groupby('range')['barcode'].count().reset_index().rename(columns={'barcode': 'tcount'})
+filtered = filtered[filtered['tcount'] >= args.tcells].drop('tcount', axis=1)
+df = df.merge(filtered, how='inner', on='range')
+
+del filtered
 
 # Remove cells with less than nfeatures features.
 print(f"{datetime.now()} - Finding number of features per cell")
-w = Window.partitionBy('barcode')
-df = df.select('range', 'barcode', 'count', funcs.count('barcode').over(w).alias('nfeatures'))
-df = df[df.nfeatures >= args.nfeatures].drop('nfeatures')
+
+df['nfeatures'] = df.groupby('barcode')['range'].transform('nunique', meta=('range', 'int'))
+df = df[df['nfeatures'] >= args.nfeatures].drop('nfeatures', axis=1)
 
 # Add the row and column indices.
-rowids = df.select('range').distinct().sort('range').withColumn('rowid', funcs.monotonically_increasing_id())
-rowids = rowids.withColumn('rowid', rowids.rowid + 1)
+print(f"{datetime.now()} - Adding the row and column indices")
 
-colids = df.select('barcode').distinct().sort('barcode').withColumn('colid', funcs.monotonically_increasing_id())
-colids = colids.withColumn('colid', colids.colid + 1)
+rowids = df['range'].drop_duplicates().to_frame()
+rowids['rowid'] = range(1, len(rowids) + 1)
 
-df = df.join(rowids, 'range')
-df = df.join(colids, 'barcode')
-df = df.sort('rowid', 'colid')
+colids = df['barcode'].drop_duplicates().to_frame()
+colids['colid'] = range(1, len(colids) + 1)
+
+df = df.merge(rowids, 'left', 'range')
+df = df.merge(colids, 'left', 'barcode')
+df = df.sort_values(['rowid', 'colid'])
 
 #####################
 ## Export the TSSs ##
 #####################
 
 # Create output directory.
+print(f"{datetime.now()} - Create the output directory")
+
 output_dir = os.path.splitext(os.path.basename(args.bam))[0]
 os.mkdir(output_dir)
 
-# Save the barcodes.
-print(f"{datetime.now()} - Saving the barcodes")
-colids.drop('colid').coalesce(1).write.text('barcodes')
-
-barcodes_file = [x for x in os.listdir('barcodes') if x.endswith('.txt')][0]
-os.rename(f"barcodes/{barcodes_file}", f"{output_dir}/barcodes.tsv")
-
 # Save the features.
 print(f"{datetime.now()} - Saving the features")
-rowids.drop('rowid').coalesce(1).write.text('features')
 
-features_file = [x for x in os.listdir('features') if x.endswith('.txt')][0]
-os.rename(f"features/{features_file}", f"{output_dir}/features.tsv")
+rowids['range'].to_csv(f"{output_dir}/features.tsv", index=False, header=False)
+
+# Save the barcodes.
+print(f"{datetime.now()} - Saving the barcodes")
+
+colids['barcode'].to_csv(f"{output_dir}/barcodes.tsv", index=False, header=False)
 
 # Save the matrix.
 print(f"{datetime.now()} - Saving the matrix")
-df.select('rowid', 'colid', 'count').coalesce(1).write.option('sep', ' ').csv('matrix')
 
-matrix_file = [x for x in os.listdir('matrix') if x.endswith('.csv')][0]
-with open(f"matrix/{matrix_file}", "r+") as mf:
-    content = mf.read()
-    with open(f"{output_dir}/matrix.mtx", "w") as mf2:
-        mf2.write("%%MatrixMarket matrix coordinate integer general\n%\n")
-        mf2.write(f"{rowids.count()} {colids.count()} {df.count()}\n")
-        mf2.write(content)
+with open(f"{output_dir}/matrix.mtx", "w") as mf:
+    mf.write("%%MatrixMarket matrix coordinate integer general\n%\n")
+    mf.write(f"{len(rowids)} {len(colids)} {len(df)}\n")
+
+df[['rowid', 'colid', 'score']].to_csv(f"{output_dir}/matrix.mtx", index=False, header=False, sep=" ", mode="a")
+
+print(f"{datetime.now()} - Finished!")
