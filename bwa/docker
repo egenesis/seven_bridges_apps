@@ -4,7 +4,7 @@ CMD ["/bin/bash"]
 
 RUN \
     apt-get -y update \
-    && apt-get -y install wget zlib1g-dev make g++ git
+    && apt-get -y install wget pigz zlib1g-dev make g++ git
 
 RUN \
     git clone https://github.com/lh3/bwa.git \
