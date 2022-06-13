@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 
 ARG PATH=/root/miniconda3/bin:$PATH
 ENV PATH=/root/miniconda3/bin:$PATH
-ENV PATH=/root/miniconda3/envs/canu/bin:$PATH
+ENV PATH=/root/miniconda3/envs/winnowmap2/bin:$PATH
 
 CMD ["/bin/bash"]
 
