@@ -19,7 +19,10 @@ RUN \
     && mamba update -y -n base -c conda-forge mamba
 
 RUN \
-    mamba create -y -n crispresso2 -c conda-forge -c bioconda crispresso2 \
+    mamba create -y -n crispresso2 -c bioconda crispresso2 \
     && mamba clean -y -all
+
+RUN \
+    mamba install -c bioconda crispresso2
 
 CMD ["/bin/bash"]
