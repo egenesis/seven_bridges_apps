@@ -4,7 +4,7 @@ FROM ubuntu:20.04
 
 ARG PATH=/root/miniconda3/bin:$PATH
 ENV PATH=/root/miniconda3/bin:$PATH
-ENV PATH=/root/miniconda3/envs/picard/bin:$PATH
+ENV PATH=/root/miniconda3/envs/crispresso2/bin:$PATH
 
 # Install required software to build CRISPResso2 
 RUN \
@@ -21,8 +21,5 @@ RUN \
 RUN \
     mamba create -y -n crispresso2 -c bioconda crispresso2 \
     && mamba clean -y -all
-
-RUN \
-    mamba install -c bioconda crispresso2
 
 CMD ["/bin/bash"]
