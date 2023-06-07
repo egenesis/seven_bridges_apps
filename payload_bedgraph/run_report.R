@@ -23,6 +23,6 @@ if (!file.exists(sample_bgh)) {
 }
 
 report_name <- paste0(report_name, "_", report_type, "_report")
-rmarkdown::render("coverage_bedgraph.Rmd",
+rmarkdown::render("/opt/coverage_bedgraph.Rmd",
                   params = list(sample_bedgraph = sample_bgh),
                   output_file = report_name)

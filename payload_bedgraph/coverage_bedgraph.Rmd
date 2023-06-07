@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r libs, include=FALSE}
 library(Sushi)
 library(GenomicRanges)
-library(flextable)
+library(DT)
 library(tidyverse)
 
 ```
@@ -51,8 +51,8 @@ coord_summary <- bgh %>%
   mutate(payload = ifelse(chr == "chr_6" & (59324124 %in% Start:End), "Expected PL15S insertion", "Aberrant PL15S insertion" ))
 
 # Print the result
-#datatable(coord_summary, rownames = FALSE)
-flextablei(coord_summary)
+datatable(coord_summary, rownames = FALSE)
+#flextablei(coord_summary)
 ```
 
 ### Plot genome coverage
