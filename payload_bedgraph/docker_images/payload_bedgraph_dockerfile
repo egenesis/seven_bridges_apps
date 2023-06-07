@@ -1,0 +1,37 @@
+FROM ubuntu:20.04
+
+# Set paths.
+
+ARG PATH=/root/miniconda3/bin:$PATH
+ENV PATH=/root/miniconda3/bin:$PATH
+ENV PATH=/root/miniconda3/envs/pl15s/bin:$PATH
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN \
+    apt-get -y update \
+    && apt-get -y install git wget vim libtiff5 libjpeg9 libarchive13 tzdata
+ENV TZ="America/New_York"
+
+RUN \
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    && bash Miniconda3-latest-Linux-x86_64.sh -b \
+    && conda update -y -n base -c defaults conda \
+    && conda install -y -n base -c conda-forge mamba \
+    && mamba update -y -n base -c conda-forge mamba
+
+RUN \
+    mamba create -y -n pl15s -c conda-forge -c bioconda r-base>=4.2 r-tidyverse==2.0.0 r-flextable==0.9.0 r-gridextra==2.3 r-rmarkdown==2.21  \
+    && mamba clean -y --all
+
+# Install wrapper script
+RUN \
+    mkdir git_tmp \
+   # && git clone https://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@github.com/egenesis/nanopore-pacbio-wgs-pipeline.git git_tmp/ \
+    && git clone https://github.com/egenesis/seven_bridges_apps.git git_tmp/ \
+    && chmod a+x git_tmp/payload_bedgraph/coverage_bedgraph.Rmd \
+    && mv git_tmp/payload_bedgraph/coverage_bedgraph.Rmd /opt/ \
+    && chmod a+x git_tmp/payload_bedgraph/run_report.R \
+    && mv git_tmp/payload_bedgraph/run_report.R /opt/
+
+CMD ["/bin/bash"]

@@ -1,0 +1,89 @@
+---
+title: "Report of potential abberrant payload insertions"
+author: "MCB Evaluation Pipeline - v0.0.1"
+version: 0.0.1
+output: html_document
+params:
+  sample_bedgraph: sample_bgh
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r libs, include=FALSE}
+library(Sushi)
+library(GenomicRanges)
+library(flextable)
+library(tidyverse)
+
+```
+
+```{r ensure folder + files exist}
+sample_bgh <- file.path(params$sample_bedgraph)
+
+#sample_bgh <- "/data5/test/payload_backbone/22318/rmEEF1a1/22318_15S_backbone_reads_to_Ssc11.rm.endoHits.bg" # this bedgraph is from a test run that manually removed EEF1a1 from Ssc11.1
+#sample_bgh <- "/data5/test/payload_backbone/22318/22318_15S_backbone_reads_to_Ssc11.rm.endoHits.bg"
+bgh <- read.table(sample_bgh, sep = "\t", header = FALSE, col.names = c("chr", "start", "end", "cov"))
+
+bgh <- bgh %>%
+  mutate(chr = paste0("chr_", chr)) 
+```
+
+### Covered regions with reads derived from payload clone 
+- Genome coverage aligning PL15S PacBio HiFi reads to Sus scrofa v11.1 to identify any aberrant payload insertions
+- Excluded homologous regions between payload transgenes/promoters and pig endogenous genes
+- Keep regions with read depth >3
+- This results in payload integration site at chr6 and any potential aberrant payload insertions elsewhere in the genome
+
+### Table
+```{r}
+# Group the data by chromosome, filter with read depth >3 and calculate the maximum and minimum coordinates
+coord_summary <- bgh %>% 
+  filter(cov >3) %>%
+  group_by(chr) %>%
+  summarise(
+    Start = min(start, na.rm = T),
+    End = max(end, na.rm = T)
+  ) %>%
+  arrange(chr) %>%
+  rowwise() %>%
+  mutate(payload = ifelse(chr == "chr_6" & (59324124 %in% Start:End), "Expected PL15S insertion", "Aberrant PL15S insertion" ))
+
+# Print the result
+#datatable(coord_summary, rownames = FALSE)
+flextablei(coord_summary)
+```
+
+### Plot genome coverage
+```{r parse indel data, message=FALSE, echo=FALSE}
+# add 100kb flanking regions to the max and min coordinates in each covered region
+for(i in 1:nrow(coord_summary)){
+  chr = coord_summary$chr[i]
+  start = coord_summary$Start[i] - 100000
+  end = coord_summary$End[i] + 100000
+  
+  plotBedgraph(bgh,chr, start, end,  color= SushiColors(2)(2)[1])
+  labelgenome(chr, start, end, n=4, scale="Mb", chromcex = 0.8, chromadjust = 0.01)
+  mtext("Read Depth", side=2, line=1.75, cex=1, font=1.5)
+  
+  axis(side=2, las=2, tcl=.2)
+  plot.window(xlim = range(start, end), ylim = c(0, 50))
+  box()
+  lines(start, end, col = SushiColors(2)(2)[1])
+}
+```
+
+### Results
+```{r}
+if(!"Aberrant PL15S insertion" %in% coord_summary$payload){
+  print("No aberrant PL15S insertions found")
+} else {
+  print("WARNING: Aberrant PL15S insertions found! Further investigation is required")
+}
+```
+
+
+
+
+
