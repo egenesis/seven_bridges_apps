@@ -6,7 +6,6 @@
 # then passes those to generate a dynamic report using R markdown and the template file
 # in coverage_bedgraph.Rmd, depending on the
 # type of report specified
-renv::restore()
 
 library(dplyr)
 library(rmarkdown)
