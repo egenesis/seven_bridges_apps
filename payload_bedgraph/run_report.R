@@ -11,12 +11,12 @@ library(dplyr)
 library(rmarkdown)
 
 args <- commandArgs(trailingOnly = TRUE)
-# First argument is output report name, second is CRISPResso2 dir, third is 3ko vs perv report
+# First argument is sample bedgraph file
 sample_bgh <- args[1]
 report_name <- strsplit(basename(sample_bgh), "_")[[1]][1]
 report_type <- "payload_aberrant_insertions"
 
-# Ensure CRISPResso2 output exists
+# Ensure bedgraph exists
 if (!file.exists(sample_bgh)) {
   print(str_glue("Couldn't find {sample_bgh} "))
   quit(status = 1)
