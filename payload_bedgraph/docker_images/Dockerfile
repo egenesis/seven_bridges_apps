@@ -10,7 +10,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN \
     apt-get -y update \
-    && apt-get -y install git wget vim libtiff5 libjpeg9 libarchive13 tzdata
+    && apt-get -y install git wget vim libtiff5 libjpeg9 libarchive13 tzdata \
+    && apt-get -y install build-essential
 ENV TZ="America/New_York"
 
 RUN \
@@ -21,8 +22,18 @@ RUN \
     && mamba update -y -n base -c conda-forge mamba
 
 RUN \
-    mamba create -y -n pl15s -c conda-forge -c bioconda r-base>=4.2 r-tidyverse==2.0.0 r-flextable==0.9.0 r-gridextra==2.3 r-rmarkdown==2.21  \
+    mamba create -y -n pl15s -c conda-forge -c bioconda r-base=4.1.2 r-rmarkdown==2.21  \
     && mamba clean -y --all
+
+# Install a specific version of BiocManager
+#RUN R -e 'install.packages("remotes")'
+#RUN R -e 'remotes::install_github("Bioconductor/BiocManager", ref = "v3.14")'
+
+RUN R -e 'install.packages("BiocManager", repos="https://cloud.r-project.org/")'
+RUN R -e 'BiocManager::install(version = "3.14")'
+RUN R -e 'BiocManager::install(c("GenomicRanges", "DT", "tidyverse", "gridextra"))'
+RUN R -e 'install.packages(c("biomaRt", "XML"), repos="https://cran.r-project.org")'
+RUN R -e 'BiocManager::install(c("Sushi"))'
 
 # Install wrapper script
 RUN \
