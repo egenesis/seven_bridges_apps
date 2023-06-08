@@ -25,10 +25,6 @@ RUN \
     mamba create -y -n pl15s -c conda-forge -c bioconda r-base=4.1.2 r-rmarkdown==2.21  \
     && mamba clean -y --all
 
-# Install a specific version of BiocManager
-#RUN R -e 'install.packages("remotes")'
-#RUN R -e 'remotes::install_github("Bioconductor/BiocManager", ref = "v3.14")'
-
 RUN R -e 'install.packages("BiocManager", repos="https://cloud.r-project.org/")'
 RUN R -e 'BiocManager::install(version = "3.14")'
 RUN R -e 'BiocManager::install(c("GenomicRanges", "DT", "tidyverse", "gridextra"))'
@@ -38,11 +34,12 @@ RUN R -e 'BiocManager::install(c("Sushi"))'
 # Install wrapper script
 RUN \
     mkdir git_tmp \
-   # && git clone https://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@github.com/egenesis/nanopore-pacbio-wgs-pipeline.git git_tmp/ \
     && git clone https://github.com/egenesis/seven_bridges_apps.git git_tmp/ \
-    && chmod a+x git_tmp/payload_bedgraph/coverage_bedgraph.Rmd \
-    && mv git_tmp/payload_bedgraph/coverage_bedgraph.Rmd /opt/ \
-    && chmod a+x git_tmp/payload_bedgraph/run_report.R \
-    && mv git_tmp/payload_bedgraph/run_report.R /opt/
+    && cd git_tmp/payload_bedgraph/ \
+    && git checkout ac4af887e371c79d9ba12f356aa3c8849f2893a7 \ 
+    && chmod a+x coverage_bedgraph.Rmd \
+    && mv coverage_bedgraph.Rmd /opt/ \
+    && chmod a+x run_report.R \
+    && mv run_report.R /opt/
 
 CMD ["/bin/bash"]
