@@ -5,6 +5,7 @@ version: 0.0.1
 output: html_document
 params:
   sample_bedgraph: sample_bgh
+  DP_cutoff: DP_cutoff
 ---
 
 ```{r setup, include=FALSE}
@@ -19,7 +20,7 @@ library(dplyr)
 
 ```
 
-# March 12 2024. Update script to add a new parameter DP_cutoff to specify minimum read depth to be considered as a true positive hit. Default should be 3, meaning DP<=2 are considered as sequencing errors or misalignment.
+#### March 12 2024. Update script to add a new parameter DP_cutoff to specify minimum read depth to be considered as a true positive hit. Default should be 3, meaning DP<=2 are considered as sequencing errors or misalignment.
 ```{r ensure folder + files exist}
 sample_bgh <- file.path(params$sample_bedgraph)
 # modify read depth cutoff

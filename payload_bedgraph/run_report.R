@@ -13,7 +13,7 @@ library(rmarkdown)
 args <- commandArgs(trailingOnly = TRUE)
 # First argument is sample bedgraph file
 sample_bgh <- args[1]
-DP_cutoff <- args[2]
+min_DP <- args[2]
 report_name <- strsplit(basename(sample_bgh), "_")[[1]][1]
 report_type <- "payload_aberrant_insertions"
 
@@ -25,5 +25,5 @@ if (!file.exists(sample_bgh)) {
 
 report_name <- paste0(report_name, "_", report_type, "_report")
 rmarkdown::render("/opt/coverage_bedgraph.Rmd",
-                  params = list(sample_bedgraph = sample_bgh),
+                  params = list(sample_bedgraph = sample_bgh, DP_cutoff = min_DP ),
                   output_file = report_name)
