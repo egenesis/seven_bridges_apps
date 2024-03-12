@@ -19,8 +19,13 @@ library(dplyr)
 
 ```
 
+# March 12 2024. Update script to add a new parameter DP_cutoff to specify minimum read depth to be considered as a true positive hit. Default should be 3, meaning DP<=2 are considered as sequencing errors or misalignment.
 ```{r ensure folder + files exist}
 sample_bgh <- file.path(params$sample_bedgraph)
+# modify read depth cutoff
+#DP_cutoff <- 3 # would filter out DP<=2 which is considered as sequencing error. So only keep DP>=3
+DP_cutoff <- file.path(params$DP_cutoff)
+
 
 #sample_bgh <- "/data5/test/payload_backbone/22318/rmEEF1a1/22318_15S_backbone_reads_to_Ssc11.rm.endoHits.bg" # this bedgraph is from a test run that manually removed EEF1a1 from Ssc11.1
 #sample_bgh <- "/data5/test/payload_backbone/22318/22318_15S_backbone_reads_to_Ssc11.rm.endoHits.bg"
@@ -33,14 +38,14 @@ bgh <- bgh %>%
 ### Covered regions with reads derived from payload clone 
 - Genome coverage aligning PL15S PacBio HiFi reads to Sus scrofa v11.1 to identify any aberrant payload insertions
 - Excluded homologous regions between payload transgenes/promoters and pig endogenous genes
-- Keep regions with read depth >3
+- Keep regions with read depth >=3
 - This results in payload integration site at chr6 and any potential aberrant payload insertions elsewhere in the genome
 
 ### Table
 ```{r}
-# Group the data by chromosome, filter with read depth >3 and calculate the maximum and minimum coordinates
+# Group the data by chromosome, filter with read depth >=3 and calculate the maximum and minimum coordinates
 coord_summary <- bgh %>% 
-  filter(cov >3) %>%
+  filter(cov >=DP_cutoff) %>%
   group_by(chr) %>%
   summarise(
     Start = min(start, na.rm = T),

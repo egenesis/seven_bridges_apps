@@ -13,6 +13,7 @@ library(rmarkdown)
 args <- commandArgs(trailingOnly = TRUE)
 # First argument is sample bedgraph file
 sample_bgh <- args[1]
+DP_cutoff <- args[2]
 report_name <- strsplit(basename(sample_bgh), "_")[[1]][1]
 report_type <- "payload_aberrant_insertions"
 
