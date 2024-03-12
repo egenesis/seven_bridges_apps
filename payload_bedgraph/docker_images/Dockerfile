@@ -36,7 +36,7 @@ RUN \
     mkdir git_tmp \
     && git clone https://github.com/egenesis/seven_bridges_apps.git git_tmp/ \
     && cd git_tmp/payload_bedgraph/ \
-    && git checkout d192f843a20c0702d86f5d289028a29b55c43aa6 \
+    && git checkout fb6fe40263988df72d7e2065a1dcab59e63de1af \
     && chmod a+x coverage_bedgraph.Rmd \
     && mv coverage_bedgraph.Rmd /opt/ \
     && chmod a+x run_report.R \
