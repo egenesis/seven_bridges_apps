@@ -1,11 +1,14 @@
 ---
 title: "Report of potential abberrant payload insertions"
-author: "MCB Evaluation Pipeline - v0.0.1"
-version: 0.0.1
 output: html_document
 params:
   sample_bedgraph: sample_bgh
   DP_cutoff: DP_cutoff
+  pl_mapped_stat: stat1
+  ssc11_mapped_stat: stat2
+  
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -20,76 +23,89 @@ library(dplyr)
 
 ```
 
-#### March 12 2024. Update script to add a new parameter DP_cutoff to specify minimum read depth to be considered as a true positive hit. Default should be 3, meaning DP<=2 are considered as sequencing errors or misalignment.
+- March 12 2024. Update script to add a new parameter DP_cutoff to specify minimum read depth to be considered as a true positive hit. Default should be 3, meaning DP<=2 are considered as sequencing errors or misalignment.
 ```{r ensure folder + files exist}
 sample_bgh <- file.path(params$sample_bedgraph)
-# modify read depth cutoff
-#DP_cutoff <- 3 # would filter out DP<=2 which is considered as sequencing error. So only keep DP>=3
+
 DP_cutoff <- file.path(params$DP_cutoff)
 
+### Read in aligned BAM stats
+# map PacBio reads to P15S plasmid
+stat1 <- file.path(params$pl_mapped_stat)
 
-#sample_bgh <- "/data5/test/payload_backbone/22318/rmEEF1a1/22318_15S_backbone_reads_to_Ssc11.rm.endoHits.bg" # this bedgraph is from a test run that manually removed EEF1a1 from Ssc11.1
-#sample_bgh <- "/data5/test/payload_backbone/22318/22318_15S_backbone_reads_to_Ssc11.rm.endoHits.bg"
+# map reads from step 1 to Ssc11.1 and remove the reads mapped to endogenous regions
+stat2 <- file.path(params$ssc11_mapped_stat)
+
+# genomecov
 bgh <- read.table(sample_bgh, sep = "\t", header = FALSE, col.names = c("chr", "start", "end", "cov"))
 
+sample_id = gsub("_PL15S_backbone_reads_to_Ssc11rm.endoHits.sorted.genomecov.bedgraph","", basename(sample_bgh))
+
 bgh <- bgh %>%
-  mutate(chr = paste0("chr_", chr)) 
+  mutate(chr = paste0("chr_", chr))
+
+# bam stats
+stat1_df <- read.table(stat1, sep = "\t", header = FALSE)
+
+stat2_df <- read.table(stat2, sep = "\t", header = FALSE)
+if(stat2_df$V2 == "No reads mapped"){
+  stat2_df$V2 = 0
+}
+
+num_reads_gt2 <- sum(bgh$cov >= DP_cutoff) 
 ```
 
-### Covered regions with reads derived from payload clone 
-- Genome coverage aligning PL15S PacBio HiFi reads to Sus scrofa v11.1 to identify any aberrant payload insertions
-- Excluded homologous regions between payload transgenes/promoters and pig endogenous genes
-- Keep regions with read depth >=3
-- This results in payload integration site at chr6 and any potential aberrant payload insertions elsewhere in the genome
+### Results
+`r paste("####", "Sample ID: ", sample_id, sep=" ")`
 
-### Table
-```{r}
+
+##### Read count report
+`r paste("1. ", "Total number of reads mapped to payload pasmid is: ", stat1_df$V2, sep=" ")`
+`r paste("2. ", "Reads in step 1 are mapped to Sus scrofa v11.1. Total number of reads after excluding homologous regions between payload pasmid and Ssc11.1 is : ", stat2_df$V2, sep=" ")`
+`r paste("3. ", "Total of of reads left after removing miaslignment (DP<=2) is: ", num_reads_gt2, sep=" ")`
+
+
+##### Table 1: Aberrant insertions of payload plasmid
+```{r warning=FALSE}
 # Group the data by chromosome, filter with read depth >=3 and calculate the maximum and minimum coordinates
-coord_summary <- bgh %>% 
+coord_summary <- bgh %>%
   filter(cov >=DP_cutoff) %>%
-  group_by(chr) %>%
+  group_by(chr)  %>%
   summarise(
     Start = min(start, na.rm = T),
     End = max(end, na.rm = T)
   ) %>%
-  arrange(chr) %>%
-  rowwise() %>%
-  mutate(payload = ifelse(chr == "chr_6" & (59324124 %in% Start:End), "Expected PL15S insertion", "Aberrant PL15S insertion" ))
+  arrange(chr) 
 
 # Print the result
 datatable(coord_summary, rownames = FALSE)
 #flextablei(coord_summary)
 ```
 
-### Plot genome coverage
+
+##### Figure 1: Coverage plot of payload plasmid aberrant insertions
 ```{r parse indel data, message=FALSE, echo=FALSE}
 # add 100kb flanking regions to the max and min coordinates in each covered region
-for(i in 1:nrow(coord_summary)){
-  chr = coord_summary$chr[i]
-  start = coord_summary$Start[i] - 100000
-  end = coord_summary$End[i] + 100000
-  
-  plotBedgraph(bgh,chr, start, end,  color= SushiColors(2)(2)[1])
-  labelgenome(chr, start, end, n=4, scale="Mb", chromcex = 0.8, chromadjust = 0.01)
-  mtext("Read Depth", side=2, line=1.75, cex=1, font=1.5)
-  
-  axis(side=2, las=2, tcl=.2)
-  plot.window(xlim = range(start, end), ylim = c(0, 50))
-  box()
-  lines(start, end, col = SushiColors(2)(2)[1])
-}
-```
-
-### Results
-```{r}
-if(!"Aberrant PL15S insertion" %in% coord_summary$payload){
+if (nrow(coord_summary) == 0){
   print("No aberrant PL15S insertions found")
-} else {
-  print("WARNING: Aberrant PL15S insertions found! Further investigation is required")
-}
+  } else {
+    print("Aberrant PL15S insertion found! Investigate further.")
+    for(i in 1:nrow(coord_summary)){
+      chr = coord_summary$chr[i]
+    start = coord_summary$Start[i] - 100000
+    end = coord_summary$End[i] + 100000
+  
+    plotBedgraph(bgh,chr, start, end,  color= SushiColors(2)(2)[1])
+    labelgenome(chr, start, end, n=4, scale="Mb", chromcex = 0.8, chromadjust = 0.01)
+    mtext("Read Depth", side=2, line=1.75, cex=1, font=1.5)
+  
+    axis(side=2, las=2, tcl=.2)
+    plot.window(xlim = range(start, end), ylim = c(0, 50))
+    box()
+    lines(start, end, col = SushiColors(2)(2)[1])
+    }
+  }
+
 ```
-
-
-
 
 
