@@ -60,8 +60,8 @@ num_reads_gt2 <- sum(bgh$cov >= DP_cutoff)
 
 
 ##### Read count report
-`r paste("1. ", "Total number of reads mapped to payload pasmid is: ", stat1_df$V2, sep=" ")`
-`r paste("2. ", "Reads in step 1 are mapped to Sus scrofa v11.1. Total number of reads after excluding homologous regions between payload pasmid and Ssc11.1 is : ", stat2_df$V2, sep=" ")`
+`r paste("1. ", "Total number of reads mapped to payload plasmid is: ", stat1_df$V2, sep=" ")`
+`r paste("2. ", "Reads from step 1 are mapped to Sus scrofa v11.1. Total number of reads after excluding homologous regions between payload plasmid and Ssc11.1 is : ", stat2_df$V2, sep=" ")`
 `r paste("3. ", "Total of of reads left after removing miaslignment (DP<=2) is: ", num_reads_gt2, sep=" ")`
 
 
