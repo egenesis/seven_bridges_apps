@@ -1,0 +1,1 @@
+Note: from docker image v0.0.6, Rmd and R scripts are now included as FILE REQUIREMENTS within "15s_backbone_reprot" App on Seven Bridges. In this way, we do not need to update docker image to update these two scripts
